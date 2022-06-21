@@ -22,6 +22,9 @@ pub struct Database {
 impl Database {
     pub fn insert(user: &UserAccount) -> Result<(), Box<dyn Error>> {
         DB.write(|db| db.data.insert(user.username().to_string(), user.clone()))?;
+        // Il faudrait faire un file adapter ici pour ajouter le nouvel
+        // utilisateur, mais je ne sais pas comment faire malgré les quelques
+        // recherches que j'ai faites
         Ok(DB.save()?)
     }
 
@@ -45,21 +48,21 @@ impl Default for Database {
 
         let u1 = UserAccount::new(
             "default_user".to_string(),
-            "default_pass".to_string(),
-            "0784539872".to_string(),
+            "def4Ult*pass".to_string(),
+            "078-453-9872".to_string(),
             UserRole::StandardUser,
         );
 
         let u2 = UserAccount::new(
             "default_hr".to_string(),
-            "default_pass".to_string(),
-            "0793175289".to_string(),
+            "def4Ult*pass".to_string(),
+            "079-317-5289".to_string(),
             UserRole::HR,
         );
 
         db.data.insert(u1.username().to_string(), u1);
         db.data.insert(u2.username().to_string(), u2);
-
+        debug!("Database initialized");
         db
     }
 }

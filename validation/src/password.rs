@@ -22,10 +22,9 @@ impl FromStr for Password {
     type Err = PasswordError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if Validator::validate_password(s) {
-            return Ok(Password(String::from(s)));
-        } else {
-            return Err(PasswordError);
+        match Validator::validate_password(s) {
+            Ok(_) => Ok(Self(s.to_string())),
+            Err(_) => Err(PasswordError),
         }
     }
 }

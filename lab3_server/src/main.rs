@@ -1,3 +1,4 @@
+mod access_control;
 /// This file is used to configure and start the TLS server.
 /// On new connections, the `handle_client` function is called in a thread
 ///
@@ -8,6 +9,7 @@ mod connection;
 mod database;
 mod user;
 
+use crate::access_control::AccessController;
 use crate::action::{Action, ConnectedUser};
 use crate::user::UserRole;
 use connection::Connection;
@@ -17,13 +19,18 @@ use rand::Rng;
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
 use std::thread;
 
+#[macro_use]
+extern crate log;
+
+use utils::init_logger;
+
 const SERVER_IP: &str = "localhost:4444";
-const KEY_PATH: &str = "key";
-const CERT_PATH: &str = "cert";
+const KEY_PATH: &str = "keys/sec_lab3_private_pkcs8";
+const CERT_PATH: &str = "keys/sec_lab3_cert.pem";
 
 lazy_static! {
     static ref MOTIVATIONAL_QUOTES: Vec<&'static str> = vec![
@@ -38,8 +45,7 @@ lazy_static! {
 }
 
 // Handles client connection by sending a banner and then waiting for a client action
-fn handle_client(conn: Connection) -> Result<(), Box<dyn Error>> {
-    let mut u = ConnectedUser::anonymous(conn); // Anonymous user at first
+fn handle_client(u: &mut ConnectedUser) -> Result<(), Box<dyn Error>> {
     loop {
         let mut banner = "Welcome to RESIGN (hR onlinE uSer dIrectory manaGemeNt)!".to_string();
         if !u.is_anonymous() {
@@ -57,7 +63,22 @@ fn handle_client(conn: Connection) -> Result<(), Box<dyn Error>> {
         // We send the banner to  the client and we expect to receive an Action
         u.conn().send(&banner)?;
         let action = u.conn().receive::<Action>()?;
-        action.perform(&mut u)?;
+        action.perform(u)?;
+    }
+}
+
+fn accept(stream: TcpStream, access_control: Arc<AccessController>, acceptor: Arc<TlsAcceptor>) {
+    // TLS handshake on top of the connection using the TlsAcceptor
+    let stream = acceptor.accept(stream);
+    if stream.is_err() {
+        error!("TLS handshake failed with error: {}", stream.err().unwrap());
+    } else {
+        info!("TLS client connection accepted");
+        let mut u = ConnectedUser::anonymous(access_control, Connection::new(stream.unwrap()));
+        match handle_client(&mut u) {
+            Ok(_) => info!("Client connection closed"),
+            Err(e) => error!("Error while handling client connection: {}", e),
+        }
     }
 }
 
@@ -80,41 +101,36 @@ fn tls_config(cert_file: &str, key_file: &str) -> Arc<TlsAcceptor> {
     let identity = load_server_identity(cert_file, key_file);
 
     let acceptor = TlsAcceptor::builder(identity)
-        .min_protocol_version(None)
-        .max_protocol_version(Some(Protocol::Tlsv10))
+        .min_protocol_version(Some(Protocol::Tlsv12))
+        .max_protocol_version(Some(Protocol::Tlsv12))
         .build()
         .expect("Could not build TlsAcceptor");
 
     Arc::new(acceptor)
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    init_logger();
+    trace!("Main server");
     // Start TLS server and wait for new connections
     let acceptor = tls_config(CERT_PATH, KEY_PATH);
     let listener = TcpListener::bind(SERVER_IP).unwrap();
-    println!("Server started");
+    let access_control = Arc::new(AccessController::new().await.unwrap());
+    info!("Server started");
 
     // Handles new connection, negotiate TLS and call handle_client
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let acceptor = acceptor.clone();
+                let access_control = access_control.clone();
                 thread::spawn(move || {
-                    // TLS handshake on top of the connection using the TlsAcceptor
-                    let stream = acceptor.accept(stream);
-                    if stream.is_err() {
-                        println!("TLS handshake failed with error: {}", stream.err().unwrap());
-                    } else {
-                        println!("TLS client connection accepted");
-                        if let Err(e) = handle_client(Connection::new(stream.unwrap())) {
-                            eprintln!("Connection closed: {}", e);
-                            return;
-                        }
-                    }
+                    accept(stream, access_control, acceptor);
                 });
             }
             Err(e) => {
-                println!("Connection failed with error: {}", e);
+                error!("Connection failed with error: {}", e);
             }
         }
     }

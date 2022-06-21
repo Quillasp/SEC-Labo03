@@ -2,19 +2,24 @@
 ///
 /// Tasks todo: - Potential improvements
 use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Display, Hash, Copy)]
 pub enum UserRole {
+    #[strum(serialize = "anon")]
+    Anon,
+    #[strum(serialize = "standard_user")]
     StandardUser,
+    #[strum(serialize = "hr")]
     HR,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserAccount {
-    username: String,
+    pub username: String,
     password: String,
-    phone_number: String,
-    role: UserRole,
+    pub phone_number: String,
+    pub role: UserRole,
 }
 
 impl UserAccount {

@@ -24,10 +24,9 @@ impl FromStr for Username {
     type Err = UsernameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if Validator::validate_username(s) {
-            return Ok(Username(String::from(s)));
-        } else {
-            return Err(UsernameError);
+        match Validator::validate_username(s) {
+            Ok(_) => Ok(Self(s.to_string())),
+            Err(_) => Err(UsernameError),
         }
     }
 }

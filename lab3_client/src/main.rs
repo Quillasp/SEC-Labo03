@@ -1,19 +1,18 @@
+mod action;
 /// This file is used to configure and start a TLS connection to the server.
 /// On new connections, the `client` function is called.
 ///
 /// Tasks todo: - Configure the TLS client properly.
-
 mod connection;
-mod action;
 
-use std::error::Error;
-use std::fs::File;
-use native_tls::{Certificate, Protocol, TlsConnector};
-use std::io::{Read};
-use std::net::TcpStream;
-use read_input::prelude::*;
 use crate::action::Action;
 use crate::connection::Connection;
+use native_tls::{Certificate, Protocol, TlsConnector};
+use read_input::prelude::*;
+use std::error::Error;
+use std::fs::File;
+use std::io::Read;
+use std::net::TcpStream;
 
 // Called once connected to the server, used to execute actions.
 fn client(conn: &mut Connection) -> Result<(), Box<dyn Error>> {
@@ -41,14 +40,17 @@ fn load_server_cert(cert_file: &str) -> Certificate {
 
 const SERVER_HOST: &str = "localhost";
 const SERVER_PORT: &str = "4444";
+const SERVER_CERT: &str = "keys/sec_lab3_cert.pem";
 
 fn main() {
+    let server_cert = load_server_cert(SERVER_CERT);
     let connector = TlsConnector::builder()
-        .min_protocol_version(None)
-        .max_protocol_version(Some(Protocol::Tlsv10))
+        .min_protocol_version(Some(Protocol::Tlsv12))
+        .max_protocol_version(Some(Protocol::Tlsv12))
         .disable_built_in_roots(true)
-        .danger_accept_invalid_certs(true)
-        .danger_accept_invalid_hostnames(true)
+        .danger_accept_invalid_certs(false)
+        .danger_accept_invalid_hostnames(false)
+        .add_root_certificate(server_cert)
         .build()
         .expect("Failed to build TlsConnector");
 

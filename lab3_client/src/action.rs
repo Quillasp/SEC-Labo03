@@ -6,25 +6,28 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
+use utils::ErrorMessage;
 use validation::{Password, PhoneNumber, Username};
 
 use crate::connection::Connection;
 
-type EmptyResult = Result<(), String>;
+type EmptyResult = Result<(), ErrorMessage>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct UserAccount {
     username: Username,
     password: Password,
-    phone_number: String,
+    phone_number: PhoneNumber,
     role: UserRole,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Display, EnumString, EnumIter)]
 enum UserRole {
-    #[strum(serialize = "StandardUser")]
+    #[strum(serialize = "anon")]
+    Anon,
+    #[strum(serialize = "standard_user")]
     StandardUser,
-    #[strum(serialize = "HR")]
+    #[strum(serialize = "hr")]
     HR,
 }
 
@@ -123,7 +126,7 @@ impl Action {
             .msg("Please enter the phone number: ")
             .get();
         let role = input::<UserRole>()
-            .msg("Please enter the role (HR/StandardUser): ")
+            .msg("Please enter the role (hr/standard_user): ")
             .get();
         connection.send(&username)?;
         connection.send(&password)?;

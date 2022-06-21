@@ -24,10 +24,9 @@ impl FromStr for PhoneNumber {
     type Err = PhoneNumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if Validator::validate_phone_number(s) {
-            return Ok(PhoneNumber(String::from(s)));
-        } else {
-            return Err(PhoneNumberError);
+        match Validator::validate_phone_number(s) {
+            Ok(_) => Ok(Self(s.to_string())),
+            Err(_) => Err(PhoneNumberError),
         }
     }
 }

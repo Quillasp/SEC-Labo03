@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 mod password;
 mod phone_number;
 mod username;

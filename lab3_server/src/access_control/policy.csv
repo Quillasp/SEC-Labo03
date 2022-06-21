@@ -1,0 +1,16 @@
+g2, show_users, anon
+
+g2, change_own_phone, standard
+
+g2, change_phone, admin
+g2, add_user, admin
+
+g, standard_user, anon
+g, hr, standard_user
+
+p, anon, anon, access
+p, standard_user, standard, access
+p, hr, admin, access
+
+g, default_user, standard_user
+g, default_hr, hr
